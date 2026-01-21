@@ -1,1 +1,7 @@
 venv/
+__pycache__/
+.DS_Store
+database.db
+
+static/images/out_*
+static/videos/video_*
