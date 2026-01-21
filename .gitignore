@@ -5,3 +5,5 @@ database.db
 
 static/images/out_*
 static/videos/video_*
+.DS_Store
+static/.DS_Store
