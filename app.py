@@ -1,4 +1,4 @@
-from flask import Flask, render_template_string
+from flask import Flask, render_template_string, redirect
 import cv2
 import os
 
@@ -76,8 +76,6 @@ VIDEO_HTML = """
             <button class="btn btn-warning">Edge Detection</button>
         </form>
     </div>
-
-    <a href="/" class="btn btn-outline-dark">Back</a>
 </div>
 
 </body>
@@ -85,6 +83,10 @@ VIDEO_HTML = """
 """
 
 # ---------------- ROUTES ----------------
+@app.route("/")
+def home():
+    return redirect("/video")
+
 @app.route("/video")
 def video():
     return render_template_string(VIDEO_HTML, video=VIDEO_INPUT)
