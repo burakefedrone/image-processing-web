@@ -21,6 +21,20 @@ DB_PATH = "database.db"
 current_image = "drone"
 
 # ---------------- DATABASE ----------------
+def init_db():
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS operations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        image_name TEXT,
+        operation TEXT,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+    conn.commit()
+    conn.close()
+
 def log_operation(image_name, operation):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
@@ -97,17 +111,14 @@ MAIN_HTML = """
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Image Processing</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<title>Image Processing</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="bg-light">
-
 <div class="container-fluid py-3">
-<h4 class="ms-2 mb-3">Image Processing Dashboard</h4>
-
+<h4>Image Processing Dashboard</h4>
 <div class="row">
 <div class="col-md-3">
-
 <form method="post" action="/select">
 <button class="btn btn-outline-primary w-100 mb-1" name="img" value="drone">Drone</button>
 <button class="btn btn-outline-success w-100 mb-1" name="img" value="nature">Nature</button>
@@ -127,13 +138,11 @@ MAIN_HTML = """
 {% for i,o,t in recent %}
 <div style="font-size:12px">{{i}} → {{o}}<br><small>{{t}}</small></div>
 {% endfor %}
-
 </div>
 
 <div class="col-md-9 text-center">
 <img src="/{{ image }}" class="img-fluid shadow rounded" style="max-height:600px;">
 </div>
-
 </div>
 </div>
 </body>
@@ -148,7 +157,6 @@ VIDEO_HTML = """
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="bg-light">
-
 <div class="container py-4">
 <h4>Video Processing</h4>
 
@@ -183,13 +191,17 @@ def select():
 
 @app.route("/gray", methods=["POST"])
 def gray():
-    path = process_image(lambda i: cv2.cvtColor(i, cv2.COLOR_BGR2GRAY), "grayscale")
-    return render_template_string(MAIN_HTML, image=path, recent=get_recent_operations())
+    return render_template_string(MAIN_HTML,
+        image=process_image(lambda i: cv2.cvtColor(i, cv2.COLOR_BGR2GRAY), "grayscale"),
+        recent=get_recent_operations()
+    )
 
 @app.route("/blur", methods=["POST"])
 def blur():
-    path = process_image(lambda i: cv2.GaussianBlur(i,(15,15),0), "blur")
-    return render_template_string(MAIN_HTML, image=path, recent=get_recent_operations())
+    return render_template_string(MAIN_HTML,
+        image=process_image(lambda i: cv2.GaussianBlur(i,(15,15),0), "blur"),
+        recent=get_recent_operations()
+    )
 
 @app.route("/edge", methods=["POST"])
 def edge():
@@ -203,14 +215,18 @@ def edge():
 
 @app.route("/bright", methods=["POST"])
 def bright():
-    path = process_image(lambda i: cv2.convertScaleAbs(i,1.2,40), "brightness")
-    return render_template_string(MAIN_HTML, image=path, recent=get_recent_operations())
+    return render_template_string(MAIN_HTML,
+        image=process_image(lambda i: cv2.convertScaleAbs(i,1.2,40), "brightness"),
+        recent=get_recent_operations()
+    )
 
 @app.route("/sharp", methods=["POST"])
 def sharp():
     k = np.array([[0,-1,0],[-1,5,-1],[0,-1,0]])
-    path = process_image(lambda i: cv2.filter2D(i,-1,k), "sharpen")
-    return render_template_string(MAIN_HTML, image=path, recent=get_recent_operations())
+    return render_template_string(MAIN_HTML,
+        image=process_image(lambda i: cv2.filter2D(i,-1,k), "sharpen"),
+        recent=get_recent_operations()
+    )
 
 @app.route("/video")
 def video():
@@ -226,5 +242,7 @@ def video_edge():
     process_video_edge()
     return render_template_string(VIDEO_HTML, video=VIDEO_EDGE)
 
-# ---------------- RUN ----------------
+# ---------------- INIT + RUN ----------------
+init_db()
+
 app.run(host="0.0.0.0", port=int(os.environ.get("PORT",5000)), debug=True)
