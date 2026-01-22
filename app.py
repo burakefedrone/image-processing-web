@@ -78,13 +78,14 @@ def process_video_gray():
     fps = safe_fps(cap)
     w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    out = cv2.VideoWriter(outp, cv2.VideoWriter_fourcc(*"mp4v"), fps, (w, h), False)
+    out = cv2.VideoWriter(outp, cv2.VideoWriter_fourcc(*"mp4v"), fps, (w, h), True)
 
     while True:
         ret, frame = cap.read()
         if not ret:
             break
-        out.write(cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY))
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        out.write(cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR))
 
     cap.release()
     out.release()
@@ -96,14 +97,14 @@ def process_video_edge():
     fps = safe_fps(cap)
     w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    out = cv2.VideoWriter(outp, cv2.VideoWriter_fourcc(*"mp4v"), fps, (w, h), False)
+    out = cv2.VideoWriter(outp, cv2.VideoWriter_fourcc(*"mp4v"), fps, (w, h), True)
 
     while True:
         ret, frame = cap.read()
         if not ret:
             break
         edges = cv2.Canny(cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY),100,200)
-        out.write(edges)
+        out.write(cv2.cvtColor(edges, cv2.COLOR_GRAY2BGR))
 
     cap.release()
     out.release()
