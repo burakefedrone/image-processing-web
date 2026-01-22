@@ -1,4 +1,4 @@
-from flask import Flask, render_template_string, request, redirect
+from flask import Flask, render_template_string, request, redirect, send_file
 import cv2
 import numpy as np
 import sqlite3
@@ -14,6 +14,7 @@ IMAGES = {
 }
 
 VIDEO_INPUT = "static/videos/sample.mp4"
+VIDEO_TMP = "/tmp"
 DB_PATH = "database.db"
 current_image = "drone"
 
@@ -52,7 +53,7 @@ def get_recent_operations():
     conn.close()
     return rows
 
-# ---------------- IMAGE PROCESS ----------------
+# ---------------- IMAGE ----------------
 def out_path(name):
     return f"static/images/out_{name}.jpg"
 
@@ -62,26 +63,28 @@ def process_image(img, name):
     log_operation(current_image, name)
     return path
 
-# ---------------- VIDEO PROCESS (CACHE FIX) ----------------
+# ---------------- VIDEO ----------------
+def safe_fps(cap):
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    return fps if fps and fps > 1 else 25.0
+
 def video_out(name):
     ts = int(time.time())
-    return f"static/videos/{name}_{ts}.mp4"
+    return f"{VIDEO_TMP}/{name}_{ts}.mp4"
 
 def process_video_gray():
     outp = video_out("video_gray")
     cap = cv2.VideoCapture(VIDEO_INPUT)
-    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-    fps = cap.get(cv2.CAP_PROP_FPS)
+    fps = safe_fps(cap)
     w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    out = cv2.VideoWriter(outp, fourcc, fps, (w, h), False)
+    out = cv2.VideoWriter(outp, cv2.VideoWriter_fourcc(*"mp4v"), fps, (w, h), False)
 
     while True:
         ret, frame = cap.read()
         if not ret:
             break
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        out.write(gray)
+        out.write(cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY))
 
     cap.release()
     out.release()
@@ -90,18 +93,16 @@ def process_video_gray():
 def process_video_edge():
     outp = video_out("video_edge")
     cap = cv2.VideoCapture(VIDEO_INPUT)
-    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-    fps = cap.get(cv2.CAP_PROP_FPS)
+    fps = safe_fps(cap)
     w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    out = cv2.VideoWriter(outp, fourcc, fps, (w, h), False)
+    out = cv2.VideoWriter(outp, cv2.VideoWriter_fourcc(*"mp4v"), fps, (w, h), False)
 
     while True:
         ret, frame = cap.read()
         if not ret:
             break
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        edges = cv2.Canny(gray,100,200)
+        edges = cv2.Canny(cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY),100,200)
         out.write(edges)
 
     cap.release()
@@ -128,8 +129,10 @@ HTML = """
 <form method="post" action="/select">
 <button class="btn btn-outline-primary w-100 mb-1" name="img" value="drone">Drone</button>
 <button class="btn btn-outline-success w-100 mb-1" name="img" value="nature">Nature</button>
-<button class="btn btn-outline-dark w-100 mb-3" name="img" value="forest">Forest</button>
+<button class="btn btn-outline-dark w-100 mb-2" name="img" value="forest">Forest</button>
 </form>
+
+<a href="/video" class="btn btn-dark w-100 mb-3">Go to Video Processing</a>
 
 <form method="post" action="/gray"><button class="btn btn-primary w-100 mb-1">Grayscale</button></form>
 <form method="post" action="/blur"><button class="btn btn-primary w-100 mb-1">Blur</button></form>
@@ -142,8 +145,6 @@ HTML = """
 <form method="post" action="/bright"><button class="btn btn-warning w-100 mb-1">Brightness</button></form>
 <form method="post" action="/noise"><button class="btn btn-warning w-100 mb-1">Noise</button></form>
 <form method="post" action="/sharp"><button class="btn btn-warning w-100 mb-2">Sharpen</button></form>
-
-<a href="/video" class="btn btn-dark w-100">Go to Video Processing</a>
 
 <hr>
 <b>Recent Operations</b>
@@ -176,13 +177,13 @@ VIDEO_HTML = """
 <div class="container p-4">
 <h3 class="fw-bold">Video Processing</h3>
 
-<video width="640" controls class="shadow rounded mb-3">
-<source src="/{{ video }}" type="video/mp4">
+<video width="640" controls>
+<source src="/video/file/{{ filename }}" type="video/mp4">
 </video>
 
-<form method="post" action="/video/original"><button class="btn btn-secondary">Original</button></form>
-<form method="post" action="/video/gray"><button class="btn btn-primary">Grayscale</button></form>
-<form method="post" action="/video/edge"><button class="btn btn-dark">Edge Detection</button></form>
+<form method="post" action="/video/original"><button class="btn btn-secondary mt-2">Original</button></form>
+<form method="post" action="/video/gray"><button class="btn btn-primary mt-2">Grayscale</button></form>
+<form method="post" action="/video/edge"><button class="btn btn-dark mt-2">Edge Detection</button></form>
 
 <a href="/" class="btn btn-outline-secondary mt-3">Back to Image</a>
 </div>
@@ -266,21 +267,28 @@ def sharp():
 
 @app.route("/video")
 def video():
-    return render_template_string(VIDEO_HTML, video=VIDEO_INPUT)
+    return render_template_string(VIDEO_HTML, filename="sample.mp4")
 
 @app.route("/video/original", methods=["POST"])
 def video_original():
-    return render_template_string(VIDEO_HTML, video=VIDEO_INPUT)
+    return render_template_string(VIDEO_HTML, filename="sample.mp4")
 
 @app.route("/video/gray", methods=["POST"])
 def video_gray():
     path = process_video_gray()
-    return render_template_string(VIDEO_HTML, video=path)
+    return render_template_string(VIDEO_HTML, filename=os.path.basename(path))
 
 @app.route("/video/edge", methods=["POST"])
 def video_edge():
     path = process_video_edge()
-    return render_template_string(VIDEO_HTML, video=path)
+    return render_template_string(VIDEO_HTML, filename=os.path.basename(path))
+
+@app.route("/video/file/<filename>")
+def serve_video(filename):
+    static_path = os.path.join("static/videos", filename)
+    if os.path.exists(static_path):
+        return send_file(static_path, mimetype="video/mp4")
+    return send_file(os.path.join(VIDEO_TMP, filename), mimetype="video/mp4")
 
 init_db()
 app.run(host="0.0.0.0", port=int(os.environ.get("PORT",5000)), debug=True)
