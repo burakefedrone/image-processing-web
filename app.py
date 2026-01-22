@@ -73,7 +73,8 @@ def process_video_gray():
         ret, frame = cap.read()
         if not ret:
             break
-        gray = cv2.cvtColor(cv2.cvtColor(cv2.cvtColor(cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY), cv2.COLOR_GRAY2BGR), cv2.COLOR_GRAY2BGR), cv2.COLOR_GRAY2BGR)
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        frame = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
         out.write(cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR))
 
     cap.release()
@@ -91,8 +92,10 @@ def process_video_edge():
         ret, frame = cap.read()
         if not ret:
             break
-        gray = cv2.cvtColor(cv2.cvtColor(cv2.cvtColor(cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY), cv2.COLOR_GRAY2BGR), cv2.COLOR_GRAY2BGR), cv2.COLOR_GRAY2BGR)
-        edges = cv2.Canny(gray, 100, 200)
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        frame = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
+        edges = cv2.Canny(frame, 100, 200)
+        frame = cv2.cvtColor(edges, cv2.COLOR_GRAY2BGR)
         out.write(cv2.cvtColor(edges, cv2.COLOR_GRAY2BGR))
 
     cap.release()
