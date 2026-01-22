@@ -74,7 +74,7 @@ def process_video_gray():
         if not ret:
             break
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        out.write(gray)
+        out.write(cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR))
 
     cap.release()
     out.release()
@@ -93,7 +93,7 @@ def process_video_edge():
             break
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         edges = cv2.Canny(gray, 100, 200)
-        out.write(edges)
+        out.write(cv2.cvtColor(edges, cv2.COLOR_GRAY2BGR))
 
     cap.release()
     out.release()
